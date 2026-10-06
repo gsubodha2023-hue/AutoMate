@@ -1,0 +1,307 @@
+# AutoMate
+
+**Multi-shop vehicle service booking, price comparison and reminder app for Android.**
+
+AutoMate brings multiple vehicle service centres together on one platform. Customers find nearby centres, compare services, prices and ratings for their own vehicle, book a convenient time slot, pay by bank transfer, track the booking and keep a full service history. Service centres manage their own services, prices, time slots and bookings, and an admin keeps the platform trustworthy.
+
+> **Status:** In development – EC5208 Mobile Application Development group project, University of Ruhuna (Department of Electrical and Information Engineering).
+> Final submission: 15 December 2026.
+
+---
+
+## Table of Contents
+
+1. [Features](#features)
+2. [User Roles](#user-roles)
+3. [Tech Stack](#tech-stack)
+4. [Architecture](#architecture)
+5. [Project Structure](#project-structure)
+6. [Getting Started](#getting-started)
+7. [Firebase Setup](#firebase-setup)
+8. [Data Model](#data-model)
+9. [Booking Status Flow](#booking-status-flow)
+10. [Testing](#testing)
+11. [Scope](#scope)
+12. [Roadmap](#roadmap)
+13. [Team](#team)
+14. [Contributing / Git Workflow](#contributing--git-workflow)
+15. [License](#license)
+
+---
+
+## Features
+
+### Customer
+- Register / log in with email and password; reset a forgotten password
+- Add and manage multiple vehicles (brand, model, type – e.g. *Toyota Axio – car*, *Toyota Hiace – van*)
+- **Search nearby service centres** sorted by distance; search by name and filter by service, price and rating
+- **Compare services, prices and ratings** of different centres for the same service and vehicle type
+- Choose a date and an **available time slot** (live availability)
+- Book services such as oil change, repairs, washing, inspections and more
+- **Upload a bank payment slip** for manual verification
+- **Track booking status** and receive **reminders** (24 hours and 1 hour before the appointment)
+- View each vehicle's **service history**
+- Rate and review completed services
+
+### Service centre (shop owner / staff)
+- Register a centre and wait for admin approval
+- Manage services with **individual prices per vehicle type** (e.g. oil change with selectable oil brands, full servicing, body wash, interior detailing, custom 3D car carpets, A/C service, wheel alignment and balancing, inspection and emissions testing, bodywork and painting, hybrid/EV battery service)
+- Define working days, time slots and capacity
+- View and manage bookings: confirm, reject, start, complete
+- Verify or reject payment slips
+
+### Admin
+- Approve, reject or suspend service centres
+- Manage users and moderate reviews
+- Monitor bookings and services
+- View summary reports (bookings by status, centre and service)
+
+---
+
+## User Roles
+
+| Role | Description |
+|------|-------------|
+| **Customer** | Vehicle owner who searches, compares, books, pays, tracks and reviews services |
+| **Shop owner** | Service-centre owner or staff who manages services, slots and bookings |
+| **Admin** | Platform administrator who approves centres, manages users and views reports |
+
+One Flutter app serves all three roles; the screens shown after login depend on the user's role.
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Platform | Android (API 24+) |
+| Language / Framework | Dart, Flutter (Material 3) |
+| State management | Provider or Riverpod |
+| Authentication | Firebase Authentication |
+| Database | Cloud Firestore |
+| File storage | Firebase Storage (payment slips, centre photos) |
+| Location | `geolocator` |
+| Images | `image_picker` |
+| Reminders | `flutter_local_notifications` |
+| Maps link | `url_launcher` ("Open in Maps") |
+| Version control | Git + GitHub |
+| Design / diagrams | Figma, draw.io |
+
+---
+
+## Architecture
+
+```
+Customer / Shop owner / Admin
+            │
+   Flutter app (Android)
+   ├── Presentation  (screens, widgets – per role)
+   ├── State         (Provider / Riverpod view-models)
+   └── Data          (repositories, models)
+            │  HTTPS
+   Firebase  ├── Authentication
+             ├── Cloud Firestore  (+ security rules)
+             └── Cloud Storage    (payment slips)
+
+   Device services: GPS · camera/gallery · local notifications
+```
+
+Key design decisions:
+- **Nearby search:** Firestore has no built-in distance query, so each centre stores its latitude/longitude and the app calculates distance on the device (Haversine formula).
+- **No double booking:** a slot's booked count and the new booking are written in a single Firestore **transaction**.
+- **Reminders:** scheduled on the device when a booking is confirmed, and updated or cancelled if the booking changes.
+- **Security:** Firestore and Storage security rules restrict access by role and ownership.
+
+---
+
+## Project Structure
+
+> This is the planned layout. Adjust it to match the actual repository.
+
+```
+automate/
+├── lib/
+│   ├── main.dart
+│   ├── app/                  # app setup, routing, theme
+│   ├── core/                 # constants, utils, shared widgets
+│   ├── models/               # User, Vehicle, ServiceCentre, Booking, ...
+│   ├── repositories/         # Firestore / Storage / Auth access
+│   ├── providers/            # state management
+│   └── features/
+│       ├── auth/
+│       ├── vehicles/
+│       ├── centres/          # nearby search, compare prices
+│       ├── booking/          # slots, booking, status tracking
+│       ├── payments/         # slip upload and verification
+│       ├── reviews/
+│       ├── history/          # vehicle service history
+│       ├── shop/             # shop owner screens
+│       └── admin/            # admin screens and reports
+├── test/                     # unit and widget tests
+├── integration_test/
+├── firestore.rules
+├── storage.rules
+├── firebase.json
+├── pubspec.yaml
+└── README.md
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (stable channel)
+- Android Studio or VS Code with the Flutter and Dart plugins
+- An Android phone (USB debugging on) or an Android emulator
+- A Google account for Firebase
+- Git
+
+### Clone and install
+
+```bash
+git clone https://github.com/<your-org>/automate.git
+cd automate
+flutter pub get
+flutter doctor        # make sure everything is green
+```
+
+### Run
+
+```bash
+flutter run
+```
+
+> The app needs a Firebase project to run. Complete the next section first.
+
+---
+
+## Firebase Setup
+
+1. Create a project in the [Firebase Console](https://console.firebase.google.com/).
+2. Enable **Authentication → Sign-in method → Email/Password**.
+3. Create a **Cloud Firestore** database.
+4. Enable **Firebase Storage**. *(Confirm early that Storage is available on your plan; images are compressed before upload to stay within free limits.)*
+5. Connect the app to your project using the FlutterFire CLI:
+
+   ```bash
+   dart pub global activate flutterfire_cli
+   flutterfire configure
+   ```
+
+   This generates `lib/firebase_options.dart`. Do **not** commit private keys or secrets.
+6. Deploy the security rules:
+
+   ```bash
+   firebase deploy --only firestore:rules,storage
+   ```
+
+7. **Create the first admin:** register a normal account in the app, then in the Firestore console open `users/<uid>` and set `role` to `admin`.
+
+### Using the Firebase Emulator (recommended for development and rule tests)
+
+```bash
+firebase emulators:start
+```
+
+---
+
+## Data Model
+
+Main Firestore collections:
+
+| Collection | Purpose |
+|------------|---------|
+| `users` | Profile and role (`customer`, `shop`, `admin`) |
+| `vehicles` | Customer vehicles (brand, model, type, registration, mileage) |
+| `centres` | Service centres (location, hours, bank details, status, average rating) |
+| `serviceItems` | Master list of service categories |
+| `centreServices` | A centre's services with price per vehicle type and oil-brand options |
+| `timeSlots` | Date, start/end time, capacity and booked count |
+| `bookings` | Customer, centre, vehicle, slot, items, total price, status |
+| `paymentSlips` | Slip image URL and verification status |
+| `reviews` | Rating (1–5) and comment, one per completed booking |
+| `serviceRecords` | Vehicle service history created from completed bookings |
+| `notifications` | In-app notifications and reminder records |
+
+An ER diagram and UML diagrams (use case, class, sequence, state) are provided in `docs/` (`AutoMate_UML.drawio`).
+
+---
+
+## Booking Status Flow
+
+```
+Pending ──► Confirmed ──► In Progress ──► Completed
+   │            │
+   └────────────┴──► Cancelled
+```
+
+- **Pending:** booking created and slot reserved; awaiting payment slip and confirmation
+- **Confirmed:** payment verified / shop confirmed; reminders scheduled
+- **In Progress:** vehicle received and service started
+- **Completed:** service finished; service record created and review enabled
+- **Cancelled:** cancelled by customer or rejected by shop; slot released
+
+---
+
+## Testing
+
+```bash
+flutter analyze
+flutter test                        # unit and widget tests
+flutter test integration_test       # integration tests (device/emulator)
+```
+
+Planned test areas: authentication and roles, distance calculation, nearby search and filters, price comparison, slot availability, **simultaneous booking of the last slot**, payment-slip flow, reminders, service history, reviews, offline behaviour, and Firestore/Storage security rules (Firebase Emulator).
+
+Usability will be evaluated with the System Usability Scale (target SUS ≥ 68).
+
+---
+
+## Scope
+
+**In scope (first version):** Android app for three roles; email/password auth; nearby search; shop-specific catalogues and price comparison; slot-based booking with live availability; bank-slip upload with manual verification; booking tracking, local reminders and in-app notifications; ratings, reviews and service history; admin screens with basic reports.
+
+**Out of scope:** iOS and web versions, online payment gateways, automatic slip (OCR) verification, embedded routing maps and live tracking, in-app chat, pick-up and delivery, server-side push notifications at scale (stretch goal), AI-based fault prediction.
+
+---
+
+## Roadmap
+
+| Phase | Target dates (2026) | Focus |
+|-------|--------------------|-------|
+| Requirements and design | 5 – 18 Oct | Requirements, Figma wireframes, database design |
+| Core development | 19 Oct – 29 Nov | Auth and roles, vehicles, centres and search, booking, payment slips, tracking and reminders, reviews, history, admin |
+| Integration and testing | 30 Nov – 9 Dec | Integration, functional and security testing, user evaluation |
+| Final polish and submission | 10 – 14 Dec | Documentation, demo preparation, submission (deadline 15 Dec) |
+
+---
+
+## Team
+
+| Name | Index No. | Responsibility |
+|------|-----------|----------------|
+| [Member 1] | [Index] | Customer module, UI/UX design, reviews, service history |
+| [Member 2] | [Index] | Shop and booking module, payment slips, slots |
+| [Member 3] | [Index] | Admin, Firebase setup and rules, reminders, testing |
+
+**Module:** EC5208 – Mobile Application Development
+**Department:** Electrical and Information Engineering, University of Ruhuna
+**Group number:** [Group No.]
+
+---
+
+## Contributing / Git Workflow
+
+- `main` – stable, demo-ready code only
+- `develop` – integration branch
+- `feature/<name>` – one branch per feature (e.g. `feature/nearby-search`)
+- Commit small and often with meaningful messages (e.g. `feat: add slot reservation transaction`)
+- Open a pull request into `develop`; at least one teammate reviews before merging
+- Never commit secrets, keystores or personal API keys
+
+---
+
+## License
+
+This project is developed for academic purposes as part of EC5208. Add a licence here if the code is to be shared publicly (for example MIT).
